@@ -11,7 +11,7 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundStyle(.tint)
 
-            Text("Valid: \(viewModel.textIsValid.description) • Count: \(viewModel.count)")
+            Text("Count: \(viewModel.count)")
 
             TextField("Type something here", text: $viewModel.textFieldText)
                 .frame(width: 300, height: 50)
@@ -29,6 +29,16 @@ struct ContentView: View {
                     }.padding(),
                     alignment: .trailing
                 )
+            Spacer()
+            Button(action: {}, label:{ Text("Button")})
+                .frame(height: 44)
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.white)
+                .background(.blue)
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .opacity(!viewModel.showButton ? 0.5 : 1)
+                .disabled(!viewModel.showButton)
         }
         .padding()
     }
@@ -44,27 +54,41 @@ final class SubscriptionViewModel: ObservableObject {
     @Published var count = 0
     @Published var textFieldText = ""
     @Published private(set) var textIsValid = false
+    @Published var showButton : Bool = false
 
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         observeTextField()
         startTimer()
+        buttonObservable()
     }
 
     private func observeTextField() {
         $textFieldText
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .removeDuplicates()
             .map { $0 == "Hello" }
             .receive(on: RunLoop.main)
-//            .assign(to: &$textIsValid)
+        //            .assign(to: &$textIsValid)
             .sink{[weak self] valid in
                 self?.textIsValid = valid
             }
             .store(in: &cancellables)
+        
+     
     }
 
+    
+    private func buttonObservable(){
+        $textIsValid
+            .combineLatest($count)
+            .sink{[weak self] textvalid,count in
+                
+                self?.showButton = textvalid && count >= 10
+            }
+            .store(in: &cancellables)
+    }
     private func startTimer() {
         Timer
             .publish(every: 0.3, on: .main, in: .common)
